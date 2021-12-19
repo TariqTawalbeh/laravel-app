@@ -16,7 +16,12 @@ use Carbon\Carbon;
 class SubscriptionsController extends Controller
 {
     public function subscribe(SubscriptionsRequest $request){
-
+        /*
+         * subscribe only happens on the inactive users, or users who are not subscribed yet, so, if any user want to susbcribe,
+         * we check if the user is existed and if his status is inactive or not, if exist and inactive, then, the subsc.
+         * request is made to the partners subsc. api and the transaction is logged and his status is updated to pending,
+         * if not exist, then he will be added to our DB and log and will call the subsc. partner api as well!
+         * */
         $user_id = Auth::user()->id;
         $user_name = Auth::user()->name;
 
@@ -65,6 +70,10 @@ class SubscriptionsController extends Controller
     }
 
     public function unSubscribe(Request $request){
+        /* unsubscription happens only on active users, it just update the status to pending and call the unsubsc. partner api.
+         * the user is determined by the access token provided to the api, so no additional parameters are needed
+         * */
+
         $user_id = Auth::user()->id;
         $user_name = Auth::user()->name;
 
@@ -98,9 +107,11 @@ class SubscriptionsController extends Controller
     public function subscriptionCallback(Request $request){
         /*
          * partner call should look like
-         * {"subscription_id":"123", "transaction_status":"1/0", "subscription_number":"123456/0"}
-         * if transaction status is true then the operation is done and subscription number inserted into our tables,
-         * else, the subscription status turns to inactive
+         * {"subscription_id":"123", "transaction_status":"1/0", "subscription_number":"123456 or 0"}
+         * if transaction status is true then the operation is done whether it's subscription or unsubscription,
+         * I can know the type of action by checking the subscriptions table, if the subscription number is there, then it's
+         * unsub. action, since the subscription action happens on unsubscribed users who don't have subscription number,
+         * subsc. number returned from the partner can be 0 if the trans. status is 0
          * */
 
         $fields = $request->validate([
@@ -129,7 +140,7 @@ class SubscriptionsController extends Controller
         } else {
             return response()->json(['something went wrong!'], 400);
         }
-
+    // logging logging
         $subscriptions_logs = SubscriptionsLog::create([
             'user_id' => $subscriptions->user_id,
             'msisdn_number' => $subscriptions->msisdn_number,
